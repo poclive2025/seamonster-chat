@@ -6,7 +6,7 @@ form.addEventListener("submit", async function (e) {
   const username = document.getElementById("username").value;
   const message = document.getElementById("message").value;
 
-  const res = await fetch("https://seamonster-chat.onrender.com/chat", {
+  const res = await fetch("https://seamonster-chat.onrender.com/", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, message }),
