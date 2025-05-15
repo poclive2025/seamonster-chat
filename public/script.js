@@ -1,3 +1,5 @@
+const RENDER_URL = "https://seamonster-chat.onrender.com";
+
 const form = document.getElementById("chat-form");
 const chatBox = document.getElementById("chat-box");
 
@@ -6,7 +8,7 @@ form.addEventListener("submit", async function (e) {
   const username = document.getElementById("username").value;
   const message = document.getElementById("message").value;
 
-  const res = await fetch("https://seamonster-chat.onrender.com/chat", {
+  const res = await fetch('${RENDER_URL}chat', {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, message }),
