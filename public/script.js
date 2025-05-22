@@ -1,35 +1,49 @@
-const RENDER_URL = ""; // Set to your backend URL when deployed, or empty for local
+const socket = io(); // Connects to backend automatically
 
 const form = document.getElementById("chat-form");
 const chatBox = document.getElementById("chat-box");
 
-form.addEventListener("submit", async function (e) {
-  e.preventDefault();
-
-  const formData = new FormData(form); // grabs all inputs + file
-
-  const res = await fetch(`${RENDER_URL}/chat`, {
-    method: "POST",
-    body: formData, // send as multipart/form-data
-  });
-
-  const data = await res.json();
-
+// Append a message to chat box
+function appendMessage({ username, message, imageUrl }) {
   const messageContainer = document.createElement("div");
   messageContainer.classList.add("chat-message");
 
   const userPara = document.createElement("p");
-  userPara.textContent = `${data.username}: ${data.message}`;
+  userPara.textContent = `${username}: ${message}`;
   messageContainer.appendChild(userPara);
 
-  if (data.imageUrl) {
+  if (imageUrl) {
     const img = document.createElement("img");
-    img.src = data.imageUrl;
+    img.src = imageUrl;
     img.alt = "Uploaded image";
     img.style.maxWidth = "150px";
     messageContainer.appendChild(img);
   }
 
   chatBox.appendChild(messageContainer);
+}
+
+// Receive full chat history on connect
+socket.on('chatHistory', (messages) => {
+  chatBox.innerHTML = "";
+  messages.forEach(appendMessage);
+});
+
+// Receive new messages live
+socket.on('newMessage', (message) => {
+  appendMessage(message);
+});
+
+form.addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const formData = new FormData(form);
+
+  // Send message & image via REST POST as before
+  await fetch("/chat", {
+    method: "POST",
+    body: formData,
+  });
+
   form.reset();
 });
