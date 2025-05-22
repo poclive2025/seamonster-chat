@@ -5,11 +5,8 @@
   <title>SeaMonster</title>
   <link rel="stylesheet" href="style.css" />
 
-  <!-- Add socket.io client script in your index.html HEAD -->
+  <!-- Socket.IO client -->
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
-
-
-  
 </head>
 <body>
   <header>
@@ -20,7 +17,7 @@
     <form id="chat-form" enctype="multipart/form-data">
       <input type="text" id="username" name="username" placeholder="Your name" required />
       <input type="text" id="message" name="message" placeholder="Your message" required />
-      <input type="file" id="avatar" name="avatar" accept="image/*" />
+      <input type="file" id="avatar" name="avatar" accept=".jpg,.jpeg,.png,.heic" />
       <button type="submit">Send</button>
     </form>
 

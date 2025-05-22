@@ -1,13 +1,17 @@
 const express = require('express');
 const cors = require("cors");
 const multer = require('multer');
+const http = require('http');
+const { Server } = require("socket.io");
+
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
 app.use(cors());
 
 const PORT = process.env.PORT || 3000;
 
-// Use memoryStorage to keep uploads in RAM only (no disk storage)
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -23,9 +27,13 @@ const upload = multer({
   }
 });
 
+// Serve static files (your public folder)
 app.use(express.static('public'));
-app.use(express.json());
 
+// In-memory chat history
+const chatHistory = [];
+
+// POST /chat to accept message + optional image
 app.post('/chat', (req, res) => {
   upload.single('avatar')(req, res, (err) => {
     if (err) {
@@ -33,17 +41,45 @@ app.post('/chat', (req, res) => {
     }
 
     const { username, message } = req.body;
-    console.log(`${username}: ${message}`);
 
-    if (req.file) {
-      console.log(`Received image in memory, size: ${req.file.size} bytes`);
-      // req.file.buffer contains the image data — handle as needed
+    if (!username || !message) {
+      return res.status(400).json({ error: "Username and message are required" });
     }
 
-    res.json({ response: `${username}: ${message}` });
+    let imageUrl = null;
+    if (req.file) {
+      // Convert image buffer to base64 and create a data URL for easy client display
+      const base64 = req.file.buffer.toString('base64');
+      const mime = req.file.mimetype;
+      imageUrl = `data:${mime};base64,${base64}`;
+    }
+
+    const chatMessage = { username, message, imageUrl };
+
+    // Save to chat history
+    chatHistory.push(chatMessage);
+
+    // Broadcast new message to all connected clients via Socket.IO
+    io.emit('newMessage', chatMessage);
+
+    console.log(`New message from ${username}: ${message}${imageUrl ? ' [with image]' : ''}`);
+
+    // Respond immediately to POST request
+    res.json({ response: 'Message sent' });
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+// When a client connects, send them the full chat history
+io.on('connection', (socket) => {
+  console.log('A user connected:', socket.id);
+  socket.emit('chatHistory', chatHistory);
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+// Use server.listen for Socket.IO integration
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
