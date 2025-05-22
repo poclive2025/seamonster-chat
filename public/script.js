@@ -1,9 +1,9 @@
-const socket = io(); // Connect to Socket.IO server
+const socket = io(); // Connect to server
 
 const form = document.getElementById("chat-form");
 const chatBox = document.getElementById("chat-box");
 
-// Append message (with optional image) to chat box
+// Append chat messages
 function appendMessage({ username, message, imageUrl }) {
   const messageContainer = document.createElement("div");
   messageContainer.classList.add("chat-message");
@@ -17,39 +17,38 @@ function appendMessage({ username, message, imageUrl }) {
     img.src = imageUrl;
     img.alt = "Uploaded image";
     img.style.maxWidth = "150px";
-    img.style.display = "block";
-    img.style.marginTop = "8px";
     messageContainer.appendChild(img);
   }
 
   chatBox.appendChild(messageContainer);
-  chatBox.scrollTop = chatBox.scrollHeight; // Auto scroll to newest message
 }
 
-// On connect, receive chat history and display it
-socket.on("chatHistory", (messages) => {
-  chatBox.innerHTML = ""; // Clear chat box
+// Load full chat history
+socket.on('chatHistory', (messages) => {
+  chatBox.innerHTML = "";
   messages.forEach(appendMessage);
 });
 
-// When a new message is broadcast, append it live
-socket.on("newMessage", (message) => {
+// Receive live message
+socket.on('newMessage', (message) => {
   appendMessage(message);
 });
 
-form.addEventListener("submit", async (e) => {
+form.addEventListener("submit", async function (e) {
   e.preventDefault();
 
   const formData = new FormData(form);
 
-  const res = await fetch("/chat", {
+  // 🔼 NEW: Tell the server who the user is
+  socket.emit("registerUser", {
+    username: formData.get("username"),
+  });
+
+  // Send chat + optional image
+  await fetch("/chat", {
     method: "POST",
     body: formData,
   });
-
-  if (!res.ok) {
-    alert("Failed to send message");
-  }
 
   form.reset();
 });
