@@ -1,66 +1,49 @@
 const express = require('express');
-const http = require('http');
-const { Server } = require("socket.io");
-const multer = require('multer');
 const cors = require("cors");
-const path = require('path');
-const fs = require('fs');
-
+const multer = require('multer');
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",  // adjust in prod
-  }
-});
+
+app.use(cors());
 
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// Use memoryStorage to keep uploads in RAM only (no disk storage)
+const storage = multer.memoryStorage();
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/heic', 'image/heif'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPG, PNG, and HEIC images are allowed'));
+    }
+  }
+});
+
 app.use(express.static('public'));
 app.use(express.json());
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
+app.post('/chat', (req, res) => {
+  upload.single('avatar')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
 
-const chatMessages = [];  // Store chat messages here
+    const { username, message } = req.body;
+    console.log(`${username}: ${message}`);
 
-// Serve uploaded images from /tmp
-app.use('/uploads', express.static('/tmp'));
+    if (req.file) {
+      console.log(`Received image in memory, size: ${req.file.size} bytes`);
+      // req.file.buffer contains the image data — handle as needed
+    }
 
-// Note: upload image and message handled via REST POST for simplicity
-app.post('/chat', upload.single('avatar'), (req, res) => {
-  const { username, message } = req.body;
-  let imageUrl = null;
-
-  if (req.file) {
-    const fileName = `${Date.now()}-${req.file.originalname}`;
-    const filePath = path.join('/tmp', fileName);
-    fs.writeFileSync(filePath, req.file.buffer);
-    imageUrl = `/uploads/${fileName}`;
-  }
-
-  const chat = { username, message, imageUrl };
-  chatMessages.push(chat);
-
-  // Broadcast new message to all connected clients
-  io.emit('newMessage', chat);
-
-  res.json(chat);
-});
-
-// Socket.io connections
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
-  // Send all previous chat messages to new client
-  socket.emit('chatHistory', chatMessages);
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+    res.json({ response: `${username}: ${message}` });
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
